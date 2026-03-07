@@ -1,0 +1,5 @@
+opencv-python-headless
+numpy
+gpiozero
+lgpio
+picamera2
