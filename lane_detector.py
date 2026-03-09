@@ -13,6 +13,8 @@ class LaneDetector:
         Processes the frame, detects lanes, and returns a steering logic
         value (-1.0 to 1.0) and the annotated frame.
         '''
+        annotated_frame = frame.copy()
+        
         # 1. Grayscale & Blur
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -64,32 +66,62 @@ class LaneDetector:
             right_avg = np.average(right_lines, axis=0) if right_lines else None
             
             mid_x = w // 2
-            y_eval = h # We evaluate the difference at the very bottom of the screen
-            
+            y_eval_bottom = h # evaluate the difference at the very bottom
+            y_eval_top = int(h * 0.5)
+
+            def get_points(avg_line):
+                slope, intercept = avg_line
+                x1 = int((y_eval_bottom - intercept) / slope)
+                x2 = int((y_eval_top - intercept) / slope)
+                return ((x1, y_eval_bottom), (x2, y_eval_top))
+
+            if left_avg is not None:
+                pt1, pt2 = get_points(left_avg)
+                cv2.line(annotated_frame, pt1, pt2, (255, 0, 0), 5) # Blue left lane
+            if right_avg is not None:
+                pt1, pt2 = get_points(right_avg)
+                cv2.line(annotated_frame, pt1, pt2, (0, 0, 255), 5) # Red right lane
+
+            center_of_lane = mid_x # Default
+
             # 5. Calculate steering offset
             if left_avg is not None and right_avg is not None:
                 # Both lanes detected
-                left_x = (y_eval - left_avg[1]) / left_avg[0]
-                right_x = (y_eval - right_avg[1]) / right_avg[0]
+                left_x = (y_eval_bottom - left_avg[1]) / left_avg[0]
+                right_x = (y_eval_bottom - right_avg[1]) / right_avg[0]
                 center_of_lane = (left_x + right_x) / 2
-                pixel_offset = center_of_lane - mid_x
-                steering_offset = pixel_offset / (w / 2)
-            
+                
+                target_left_x = (y_eval_top - left_avg[1]) / left_avg[0]
+                target_right_x = (y_eval_top - right_avg[1]) / right_avg[0]
+                target_x = (target_left_x + target_right_x) / 2
             elif left_avg is not None:
                 # Only left lane detected, estimate by adding lane width
-                left_x = (y_eval - left_avg[1]) / left_avg[0]
+                left_x = (y_eval_bottom - left_avg[1]) / left_avg[0]
                 center_of_lane = left_x + (w // 3) # Assumption of lane width
-                pixel_offset = center_of_lane - mid_x
-                steering_offset = pixel_offset / (w / 2)
                 
+                target_left_x = (y_eval_top - left_avg[1]) / left_avg[0]
+                target_x = target_left_x + (w // 3)
             elif right_avg is not None:
                 # Only right lane detected, estimate
-                right_x = (y_eval - right_avg[1]) / right_avg[0]
+                right_x = (y_eval_bottom - right_avg[1]) / right_avg[0]
                 center_of_lane = right_x - (w // 3)
-                pixel_offset = center_of_lane - mid_x
-                steering_offset = pixel_offset / (w / 2)
-        
+                
+                target_right_x = (y_eval_top - right_avg[1]) / right_avg[0]
+                target_x = target_right_x - (w // 3)
+            else:
+                target_x = mid_x
+                
+            pixel_offset = center_of_lane - mid_x
+            steering_offset = pixel_offset / (w / 2)
+            
+            # Draw the target center path (Green)
+            cv2.line(annotated_frame, (mid_x, y_eval_bottom), (int(target_x), y_eval_top), (0, 255, 0), 4)
+
         # Cap the steering offset at [-1, 1]
         steering_offset = max(min(steering_offset, 1.0), -1.0)
         
-        return steering_offset, cropped_edges
+        # Add visual text
+        cv2.putText(annotated_frame, f"Steering: {steering_offset:.2f}", (20, 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    
+        return steering_offset, annotated_frame

@@ -58,7 +58,7 @@ def main():
                 continue
 
             # 3. LANE DETECTION & CONTROL
-            steering_offset, edges = lane_detector.process(frame)
+            steering_offset, annotated_frame = lane_detector.process(frame)
             
             # Simple Proportional Control (P-Controller)
             base_speed = 0.5 # Normal forward speed (50%)
@@ -70,10 +70,10 @@ def main():
             
             car.move(left_speed, right_speed)
 
-            # Optional: Display output (Will reduce performance severely on Pi if running headless)
-            # cv2.imshow('Lane Assist View', edges)
-            # if cv2.waitKey(1) & 0xFF == ord('q'):
-            #     break
+            # Display output
+            cv2.imshow('Lane Assist View', annotated_frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Shutting down...")
