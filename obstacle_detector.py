@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 class ObstacleDetector:
-    def __init__(self, model_path=None, config_path=None):
+    def __init__(self, model_path = 'MobileNetSSD_deploy.caffemodel', config_path = 'MobileNetSSD_deploy.prototxt'):
         '''
         Initializes obstacle detection.
         For robust detection, supply a pre-trained MobileNet SSD model:
