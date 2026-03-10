@@ -101,14 +101,22 @@ def main():
             steering_offset, final_composite_frame = lane_detector.process(yolo_annotated_frame)
             
             # Simple Proportional Control (P-Controller)
-            base_speed = 0.5 # Normal forward speed (50%)
-            max_turn_reduction = 0.3 # Max speed reduction for turning
-            
-            # steering_offset is between -1.0 (left) and 1.0 (right)
-            left_speed = base_speed + (steering_offset * max_turn_reduction)
-            right_speed = base_speed - (steering_offset * max_turn_reduction)
-            
-            car.move(left_speed, right_speed)
+            if steering_offset is None:
+                # No lane detected, stop the car
+                car.stop()
+                cv2.putText(final_composite_frame, "NO LANE DETECTED - STOPPED", (20, 120), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                cv2.putText(final_composite_frame, "Steering: None", (20, 40), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            else:
+                base_speed = 0.5 # Normal forward speed (50%)
+                max_turn_reduction = 0.3 # Max speed reduction for turning
+                
+                # steering_offset is between -1.0 (left) and 1.0 (right)
+                left_speed = base_speed + (steering_offset * max_turn_reduction)
+                right_speed = base_speed - (steering_offset * max_turn_reduction)
+                
+                car.move(left_speed, right_speed)
 
             # Display output
             cv2.imshow('Autonomous Assist View', final_composite_frame)

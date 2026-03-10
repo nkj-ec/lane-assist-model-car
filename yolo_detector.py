@@ -55,16 +55,16 @@ class YoloDetector:
             box_height = y2 - y1
 
             # 1. Stop Sign Detection
-            if cls_id == 11 and conf > 0.4: # Class 11 is Stop Sign in COCO
+            if cls_id == 11 and conf > 0.2: # Class 11 is Stop Sign in COCO
                 if box_width > 40 and box_height > 40: # Ignore tiny signs far away
                     sign_detected = "STOP"
             
             # 2. Obstacle Detection 
             # We consider common physical blockers: Person(0), Car(2), Motorcycle(3), Bus(5), Truck(7), Dog(16)
             obstacle_classes = {0, 2, 3, 5, 7, 16}
-            if cls_id in obstacle_classes and conf > 0.5:
+            if cls_id in obstacle_classes and conf > 0.3:
                 # If the obstacle is large enough and near the lower portion of the frame
-                if box_width > (w * 0.3) and y2 > (h * 0.5):
+                if box_width > (w * 0.25) and y2 > (h * 0.5):
                     obstacle_detected = True
 
         return sign_detected, obstacle_detected, annotated_frame

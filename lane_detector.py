@@ -153,9 +153,13 @@ class LaneDetector:
             target_x = right_fitx[-1] - (w // 3)
             center_fitx = right_fitx - (w // 3)
             
-        pixel_offset = target_x - mid_x
-        steering_offset = pixel_offset / (w / 2)
-        steering_offset = max(min(steering_offset, 1.0), -1.0)
+        if center_fitx is None:
+            # Tell controller to STOP if no path exists
+            steering_offset = None
+        else:
+            pixel_offset = target_x - mid_x
+            steering_offset = pixel_offset / (w / 2)
+            steering_offset = max(min(steering_offset, 1.0), -1.0)
         
         # 7. Draw the Path
         blank_annotated = np.zeros_like(annotated_frame)
