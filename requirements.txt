@@ -3,3 +3,4 @@ numpy
 gpiozero
 lgpio
 picamera2
+ultralytics

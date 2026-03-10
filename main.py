@@ -29,6 +29,27 @@ def main():
 
     print("Starting Autonomous Loop. Press Ctrl+C to exit.")
     
+    def active_delay(duration, message):
+        start_t = time.time()
+        while time.time() - start_t < duration:
+            try:
+                fr_rgb = picam2.capture_array()
+                fr = cv2.cvtColor(fr_rgb, cv2.COLOR_RGB2BGR)
+                
+                # We need to run YOLO during the delay so we can still display YOLO annotations
+                _, _, annot = yolo_detector.detect(fr)
+            except Exception:
+                continue
+            
+            # Let's also draw the lanes quickly during the delay
+            _, annot = lane_detector.process(annot)    
+                
+            cv2.putText(annot, message, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+            cv2.imshow('Autonomous Assist View', annot)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                return False
+        return True
+
     try:
         while True:
             try:
@@ -44,21 +65,21 @@ def main():
 
             # 1. OBSTACLE DETECTION (High Priority)
             if obstacle_detected:
-                car.stop()
-                print("OBSTACLE DETECTED! Stopping.")
+                print("OBSTACLE DETECTED! Initiating overtake.")
                 
-                # Show warning to prevent GUI from freezing
-                cv2.putText(yolo_annotated_frame, "OBSTACLE WARNING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                cv2.imshow('Lane Assist View', yolo_annotated_frame)
+                # 1. Swerve Right to change lane
+                car.move(0.6, 0.2)
+                if not active_delay(1.0, "OVERTAKING - SWERVE RIGHT"): break
                 
-                hough_frame = np.zeros_like(yolo_annotated_frame)
-                cv2.putText(hough_frame, "OBSTACLE WARNING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                cv2.imshow('Hough Transform View', hough_frame)
+                # 2. Straight to pass
+                car.move(0.5, 0.5)
+                if not active_delay(1.5, "OVERTAKING - PASSING"): break
                 
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                    
-                continue # Skip the rest of the loop until clear
+                # 3. Swerve Left to re-enter lane
+                car.move(0.2, 0.6)
+                if not active_delay(1.0, "OVERTAKING - RETURN LEFT"): break
+                
+                continue
                 
             # 2. SIGN DETECTION (High Priority)
             if sign == "STOP":
@@ -66,50 +87,18 @@ def main():
                 car.stop()
                 
                 # Wait for 3 seconds while keeping the camera feed alive
-                start_time = time.time()
-                while time.time() - start_time < 3.0:
-                    try:
-                        frame_rgb = picam2.capture_array()
-                        frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                    except Exception:
-                        pass
-                    
-                    annotated_frame = frame.copy()
-                    cv2.putText(annotated_frame, "STOP SIGN - WAITING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                    cv2.imshow('Lane Assist View', annotated_frame)
-                    
-                    hough_frame = np.zeros_like(annotated_frame)
-                    cv2.putText(hough_frame, "STOP SIGN - WAITING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                    cv2.imshow('Hough Transform View', hough_frame)
-                    
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
+                if not active_delay(3.0, "STOP SIGN - WAITING"): break
 
                 # Keep moving slightly forward to pass the sign for 1 second
                 print("Proceeding forward...")
                 car.move(0.5, 0.5)
-                start_time = time.time()
-                while time.time() - start_time < 1.0:
-                    try:
-                        frame_rgb = picam2.capture_array()
-                        frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                    except Exception:
-                        pass
-                        
-                    annotated_frame = frame.copy()
-                    cv2.putText(annotated_frame, "PROCEEDING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
-                    cv2.imshow('Lane Assist View', annotated_frame)
-                    
-                    hough_frame = np.zeros_like(annotated_frame)
-                    cv2.putText(hough_frame, "PROCEEDING", (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
-                    cv2.imshow('Hough Transform View', hough_frame)
-                    
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
+                if not active_delay(1.0, "PROCEEDING"): break
                 continue
 
             # 3. LANE DETECTION & CONTROL
-            steering_offset, annotated_frame, hough_frame = lane_detector.process(frame)
+            # Pass the yolo_annotated_frame into the lane detector so it draws lane lines
+            # on top of the already YOLO-marked frame.
+            steering_offset, final_composite_frame = lane_detector.process(yolo_annotated_frame)
             
             # Simple Proportional Control (P-Controller)
             base_speed = 0.5 # Normal forward speed (50%)
@@ -122,8 +111,7 @@ def main():
             car.move(left_speed, right_speed)
 
             # Display output
-            cv2.imshow('Lane Assist View', annotated_frame)
-            cv2.imshow('Hough Transform View', hough_frame)
+            cv2.imshow('Autonomous Assist View', final_composite_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 

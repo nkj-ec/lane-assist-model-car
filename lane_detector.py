@@ -55,8 +55,6 @@ class LaneDetector:
             threshold=50, maxLineGap=50, minLineLength=40
         )
         
-        hough_frame = cv2.cvtColor(cropped_edges, cv2.COLOR_GRAY2BGR)
-        
         steering_offset = 0.0 # -1.0 is full left, 1.0 is full right
         
         left_avg = None
@@ -78,9 +76,6 @@ class LaneDetector:
             
             for line in lines:
                 x1, y1, x2, y2 = line[0]
-                
-                # Draw raw hough line
-                cv2.line(hough_frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
                 
                 # Avoid divide by zero
                 if x2 == x1:
@@ -108,19 +103,10 @@ class LaneDetector:
             center_of_lane = mid_x # Default
 
             # 5. Calculate steering offset
-            if left_avg is not None and right_avg is not None:
-                # Both lanes detected
+            if left_avg is not None:
+                # Left lane detected (use left lane even if right is present to favor left lane)
                 left_x = (y_eval_bottom - left_avg[1]) / left_avg[0]
-                right_x = (y_eval_bottom - right_avg[1]) / right_avg[0]
-                center_of_lane = (left_x + right_x) / 2
-                
-                target_left_x = (y_eval_top - left_avg[1]) / left_avg[0]
-                target_right_x = (y_eval_top - right_avg[1]) / right_avg[0]
-                target_x = (target_left_x + target_right_x) / 2
-            elif left_avg is not None:
-                # Only left lane detected, estimate by adding lane width
-                left_x = (y_eval_bottom - left_avg[1]) / left_avg[0]
-                center_of_lane = left_x + (w // 3) # Assumption of lane width
+                center_of_lane = left_x + (w // 3) # Target relative to left lane
                 
                 target_left_x = (y_eval_top - left_avg[1]) / left_avg[0]
                 target_x = target_left_x + (w // 3)
@@ -173,4 +159,4 @@ class LaneDetector:
         cv2.putText(final_frame, f"Steering: {steering_offset:.2f}", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                     
-        return steering_offset, final_frame, hough_frame
+        return steering_offset, final_frame

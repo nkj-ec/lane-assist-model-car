@@ -5,8 +5,7 @@ This project contains the Python code required to run a model car with a Raspber
 ## Features
 - **Motor Control**: Interfacing the L298N via `gpiozero` which is natively compatible with the Pi 5's RP1 I/O chip.
 - **Lane Detection**: Canny Edge detection + Hough Line Transform using `OpenCV`.
-- **Obstacle Detection**: Plug-and-play support for a MobileNet SSD DNN or fallback pure Computer Vision contour-based checking.
-- **Traffic Sign Detection**: Haar cascade implementation to halt at stop signs.
+- **Obstacle & Traffic Sign Detection**: Unified detection using an `ultralytics` YOLOv8n object detection model.
 
 ## Hardware Wiring
 ### L298N to Raspberry Pi 5
@@ -33,10 +32,12 @@ pip install -r requirements.txt
 ```
 
 
-3. **Get Models (Optional but highly recommended)**:
-   - **Stop Sign**: Download a stop sign haarcascade (`stop_data.xml`) and place it in the same directory. E.g., from [OpenCV Haar cascaded lists]("https://github.com/maurehur/Stop-Sign-detection_OpenCV").
-   - **Obstacle Detection**: Check out TensorFlow's or Caffe's `MobileNet SSD` pre-trained models. Edit the `ObstacleDetector` constructor in `main.py` with the paths if using.
-   "https://github.com/robmarkcole/object-detection-app/tree/master/model"
+3. **Install YOLOv8**:
+   The code relies on the `ultralytics` package for object detection. Ensure it's installed via:
+   ```bash
+   pip install ultralytics
+   ```
+   > **Note**: The first time you run the script, `ultralytics` will automatically download the `yolov8n.pt` model weights (approx. 6MB).
 
 
 ## Running the Code
