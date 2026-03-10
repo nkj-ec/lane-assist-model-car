@@ -27,9 +27,11 @@ def main():
     lane_detector = LaneDetector()
     yolo_detector = YoloDetector()
 
+    gui_enabled = True
     print("Starting Autonomous Loop. Press Ctrl+C to exit.")
     
     def active_delay(duration, message):
+        nonlocal gui_enabled
         start_t = time.time()
         while time.time() - start_t < duration:
             try:
@@ -45,12 +47,24 @@ def main():
             _, annot = lane_detector.process(annot)    
                 
             cv2.putText(annot, message, (20, 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-            cv2.imshow('Autonomous Assist View', annot)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                return False
+            
+            if gui_enabled:
+                try:
+                    cv2.imshow('Autonomous Assist View', annot)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        return False
+                except cv2.error:
+                    print("\n[WARNING] OpenCV GUI not supported (headless mode). Disabling video output.")
+                    gui_enabled = False
+                    
         return True
 
     try:
+        frame_counter = 0
+        last_sign = None
+        last_obstacle = False
+        last_yolo_frame = None
+
         while True:
             try:
                 # Capture frame as RGB array, then convert to BGR for OpenCV
@@ -60,8 +74,20 @@ def main():
                 print(f"Failed to grab frame from camera. Exiting. Error: {e}")
                 break
 
-            # Run YOLO unified detection
-            sign, obstacle_detected, yolo_annotated_frame = yolo_detector.detect(frame)
+            # Run YOLO unified detection only every 5 frames to save massive CPU cycles
+            frame_counter += 1
+            if frame_counter % 5 == 1 or last_yolo_frame is None:
+                sign, obstacle_detected, yolo_annotated_frame = yolo_detector.detect(frame)
+                last_sign = sign
+                last_obstacle = obstacle_detected
+                last_yolo_frame = yolo_annotated_frame
+            else:
+                sign = last_sign
+                obstacle_detected = last_obstacle
+                yolo_annotated_frame = last_yolo_frame
+                # Draw old boxes on the NEW frame to keep the feed looking smooth
+                # (You could do a complex tracking algorithm here, but pasting old boxes is fine for 5 frames)
+                pass
 
             # 1. OBSTACLE DETECTION (High Priority)
             if obstacle_detected:
@@ -117,9 +143,14 @@ def main():
                 car.move(left_speed, right_speed)
 
             # Display output
-            cv2.imshow('Autonomous Assist View', final_composite_frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if gui_enabled:
+                try:
+                    cv2.imshow('Autonomous Assist View', final_composite_frame)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                except cv2.error:
+                    print("\n[WARNING] OpenCV GUI not supported (headless mode). Disabling video output.")
+                    gui_enabled = False
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Shutting down...")

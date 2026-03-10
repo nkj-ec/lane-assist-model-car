@@ -32,8 +32,11 @@ class YoloDetector:
         if not self.active:
             return None, False, frame
 
-        # Run inference (stream=False, verbose=False for cleaner logging)
-        results = self.model(frame, verbose=False)
+        # Run inference optimized for Raspberry Pi CPU:
+        # - imgsz=160 forces it to downscale the image drastically before inference (huge speedup)
+        # - half=False ensures we don't try to use FP16 (which is emulated slowly on Pi CPUs)
+        # - device='cpu' ensures we don't waste time looking for a GPU
+        results = self.model(frame, verbose=False, imgsz=160, half=False, device='cpu')
         result = results[0]
         
         h, w = frame.shape[:2]
@@ -60,9 +63,10 @@ class YoloDetector:
                     sign_detected = "STOP"
             
             # 2. Obstacle Detection 
-            # We consider common physical blockers: Person(0), Car(2), Motorcycle(3), Bus(5), Truck(7), Dog(16)
-            obstacle_classes = {0, 2, 3, 5, 7, 16}
-            if cls_id in obstacle_classes and conf > 0.3:
+            # We want to detect persons, cars, and "random objects".
+            # Exclude Stop Sign(11), TV(62), Cell Phone(67)
+            ignored_classes = {11, 62, 67}
+            if cls_id not in ignored_classes and conf > 0.3:
                 # If the obstacle is large enough and near the lower portion of the frame
                 if box_width > (w * 0.25) and y2 > (h * 0.5):
                     obstacle_detected = True
