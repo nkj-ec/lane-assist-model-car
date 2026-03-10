@@ -106,8 +106,6 @@ def main():
                 car.stop()
                 cv2.putText(final_composite_frame, "NO LANE DETECTED - STOPPED", (20, 120), 
                             cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-                cv2.putText(final_composite_frame, "Steering: None", (20, 40), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             else:
                 base_speed = 0.5 # Normal forward speed (50%)
                 max_turn_reduction = 0.3 # Max speed reduction for turning
@@ -135,7 +133,10 @@ def main():
             picam2.close()
         except:
             pass
-        cv2.destroyAllWindows()
+        try:
+            cv2.destroyAllWindows()
+        except:
+            pass
         print("Shutdown complete.")
 
 if __name__ == '__main__':

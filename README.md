@@ -4,7 +4,7 @@ This project contains the Python code required to run a model car with a Raspber
 
 ## Features
 - **Motor Control**: Interfacing the L298N via `gpiozero` which is natively compatible with the Pi 5's RP1 I/O chip.
-- **Lane Detection**: Canny Edge detection + Hough Line Transform using `OpenCV`.
+- **Lane Detection**: Morphological transformations (Top-Hat/Black-Hat) + Polynomial sliding-window fit using `OpenCV`.
 - **Obstacle & Traffic Sign Detection**: Unified detection using an `ultralytics` YOLOv8n object detection model.
 
 ## Hardware Wiring
@@ -23,22 +23,37 @@ This project contains the Python code required to run a model car with a Raspber
 1. **Enable Camera Interfaces**: Ensure your camera is enabled via `sudo raspi-config` (Or automatically works dynamically on Pi 5 via `rpicam`/`libcamera`). We are using `Picamera2` (the official Python rpicam library) to capture frames natively.
    
 2. **Install Dependencies**:
+On modern Raspberry Pi OS (Bookworm and later), the system protects the global Python environment. Running a standard `pip install` will result in an "externally managed environment" error.
+
+You have three options to install the required libraries:
+
+**Option A - The easiest way (forcing pip):**
+You can bypass the environment protection by adding `--break-system-packages`. Note that `opencv-python` is required instead of `opencv-python-headless` so you can view the GUI windows:
 ```bash
-# Strongly recommended to create a virtual environment first
+pip install -r requirements.txt --break-system-packages
+```
+
+**Option B - Using apt (Safest for system packages):**
+Install the core libraries using the OS package manager, and only use pip for `ultralytics`.
+```bash
+sudo apt update
+sudo apt install python3-opencv python3-numpy python3-gpiozero python3-lgpio
+pip install ultralytics --break-system-packages
+```
+
+**Option C - Virtual Environment:**
+```bash
 python -m venv venv
 source venv/bin/activate
-
 pip install -r requirements.txt
 ```
 
-
 3. **Install YOLOv8**:
-   The code relies on the `ultralytics` package for object detection. Ensure it's installed via:
-   ```bash
-   pip install ultralytics
-   ```
-   > **Note**: The first time you run the script, `ultralytics` will automatically download the `yolov8n.pt` model weights (approx. 6MB).
-
+If you didn't install `ultralytics` in the previous step, do so now:
+```bash
+pip install ultralytics --break-system-packages
+```
+> **Note**: The first time you run the script, `ultralytics` will automatically download the lightweight `yolov8n.pt` model weights (approx. 6MB).
 
 ## Running the Code
 Run the code headless or via a terminal:

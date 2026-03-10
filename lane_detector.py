@@ -37,12 +37,27 @@ class LaneDetector:
         warped = cv2.warpPerspective(frame, M, (w, h), flags=cv2.INTER_LINEAR)
         annotated_frame = warped.copy()
         
-        # 1. Grayscale & Blur (on warped image)
+        # 1. Grayscale
         gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
         
-        # 2. Canny Edge Detection
-        edges = cv2.Canny(blur, 50, 150)
+        # 2. Morphological Line Extraction (handles both white-on-black and black-on-white)
+        # We use a 15x15 kernel, which is wide/tall enough to cover standard model car lane lines
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+        
+        # Top-hat transforms isolate bright features on dark backgrounds
+        tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel)
+        
+        # Black-hat transforms isolate dark features on bright backgrounds
+        blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel)
+        
+        # Combine both (so any line, whether black or white, is represented as bright pixels)
+        combined_lines = cv2.add(tophat, blackhat)
+        
+        # Blur slightly to smooth the lines before thresholding
+        blur = cv2.GaussianBlur(combined_lines, (5, 5), 0)
+        
+        # Threshold to get a clean binary image of strictly high-contrast thin features (like track lines)
+        _, edges = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY)
         
         # 3. Create Region of Interest (Simplified because we already warped and isolated the perspective)
         mask = np.zeros_like(edges)
@@ -197,7 +212,11 @@ class LaneDetector:
         cv2.polylines(final_frame, [src.astype(np.int32)], True, (0, 255, 255), 2)
         
         # Add visual text
-        cv2.putText(final_frame, f"Steering: {steering_offset:.2f}", (20, 40), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        if steering_offset is not None:
+            cv2.putText(final_frame, f"Steering: {steering_offset:.2f}", (20, 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        else:
+            cv2.putText(final_frame, "Steering: None", (20, 40), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                     
         return steering_offset, final_frame
