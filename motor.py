@@ -33,22 +33,39 @@ class Car:
         '''
         Drive the motors.
         Speeds should be between -1.0 (full backward) and 1.0 (full forward).
+        Automatically compensates for the motor deadband (40% PWM minimum).
         '''
         # Constrain values to [-1.0, 1.0]
         left_speed = max(min(left_speed, 1.0), -1.0)
         right_speed = max(min(right_speed, 1.0), -1.0)
 
+        # Minimum PWM required to overcome static friction
+        min_pwm = 0.40
+
+        def apply_deadband(speed):
+            # Treat very small speeds as complete stop
+            if abs(speed) < 0.05:
+                return 0.0
+            
+            # Scale the (0.0, 1.0] input range to (min_pwm, 1.0]
+            mapped_speed = min_pwm + (abs(speed) * (1.0 - min_pwm))
+            
+            return mapped_speed if speed > 0 else -mapped_speed
+
+        actual_left = apply_deadband(left_speed)
+        actual_right = apply_deadband(right_speed)
+
         # Control left motor
-        if left_speed >= 0:
-            self.left_motor.forward(left_speed)
+        if actual_left >= 0:
+            self.left_motor.forward(actual_left)
         else:
-            self.left_motor.backward(abs(left_speed))
+            self.left_motor.backward(abs(actual_left))
             
         # Control right motor
-        if right_speed >= 0:
-            self.right_motor.forward(right_speed)
+        if actual_right >= 0:
+            self.right_motor.forward(actual_right)
         else:
-            self.right_motor.backward(abs(right_speed))
+            self.right_motor.backward(abs(actual_right))
 
     def stop(self):
         '''Stop both motors.'''
