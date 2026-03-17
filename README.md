@@ -55,6 +55,12 @@ pip install ultralytics --break-system-packages
 ```
 > **Note**: The first time you run the script, `ultralytics` will automatically download the lightweight `yolov8n.pt` model weights (approx. 6MB).
 
+## Configuration
+### Bird's Eye View
+The lane detector supports two perspective modes, toggled via `use_birds_eye` in `main.py`:
+- **`True`** (default): Warps the camera feed into a top-down view before detecting lanes. This gives better results on straight and gently curving tracks.
+- **`False`**: Processes the image from the camera's native perspective. Useful if the warp distorts your specific track layout.
+
 ## Running the Code
 Run the code headless or via a terminal:
 ```bash

@@ -146,8 +146,8 @@ def main():
             else:
                 # Lower base speed for better cornering control
                 base_speed = 0.4 
-                # Drastically increase steering authority so the inner wheel can stop or reverse
-                steering_factor = 0.55 
+                # High steering authority to overcome motor efficiency differences
+                steering_factor = 0.75 
                 
                 # steering_offset is between -1.0 (left) and 1.0 (right)
                 left_speed = base_speed + (steering_offset * steering_factor)
