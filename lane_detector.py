@@ -160,6 +160,15 @@ class LaneDetector:
             left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
         if right_fit is not None:
             right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+        
+        # Validate lane spacing: reject if lines are too close or too far apart
+        if left_fitx is not None and right_fitx is not None:
+            lane_width = right_fitx[-1] - left_fitx[-1]  # gap at bottom of frame
+            min_lane_width = w * 0.15  # minimum ~96px on 640w
+            max_lane_width = w * 0.85  # maximum ~544px on 640w
+            if lane_width < min_lane_width or lane_width > max_lane_width:
+                left_fitx = None
+                right_fitx = None
             
         # 6. Calculate Steering & Center
         mid_x = w // 2
